@@ -90,6 +90,7 @@ _SECTION_CONTEXTS = {
     "jobs": "jobs",
     "saved_jobs": "saved jobs",
     "feed": "feed",
+    "saved_posts": "saved posts",
 }
 
 _DEFAULT_REFERENCE_CAP = 12
@@ -119,6 +120,8 @@ _REFERENCE_CAPS = {
     # Kept in sync with the literal cap=50 in feed_payload.build_feed_references
     # where SDUI-derived /posts/<slug> permalinks are appended.
     "feed": 50,
+    # Matches get_saved_posts num_posts ceiling (Field(ge=1, le=50)).
+    "saved_posts": 50,
 }
 
 # A label must carry at least one letter or digit in any script, so the class is

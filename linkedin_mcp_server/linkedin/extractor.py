@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import TYPE_CHECKING, Any
 
 from patchright.async_api import Page
@@ -17,6 +18,7 @@ from linkedin_mcp_server.linkedin.contracts import (
     rate_limited_section_error as rate_limited_section_error,
 )
 from linkedin_mcp_server.linkedin.conversations import ConversationReader
+from linkedin_mcp_server.linkedin.engagement import PostEngagementReader
 from linkedin_mcp_server.linkedin.feed import FeedReader
 from linkedin_mcp_server.linkedin.job_pages import JobPageReader
 from linkedin_mcp_server.linkedin.jobs import JobReader
@@ -65,6 +67,7 @@ class LinkedInExtractor:
         job_pages = JobPageReader(session, navigator, content)
         self._jobs = JobReader(navigator, capture, job_pages)
         self._posts = PostSearch(capture)
+        self._engagement = PostEngagementReader(session, navigator)
         self._conversations = ConversationReader(
             session, navigator, content, profile_page
         )
@@ -84,6 +87,25 @@ class LinkedInExtractor:
     async def extract_feed(self, num_posts: int = 10) -> ExtractedSection:
         """Read the LinkedIn home feed, scrolling until enough posts load."""
         return await self._feed.extract_feed(num_posts)
+
+    async def extract_saved_posts(
+        self, num_posts: int = 10, stop_fingerprints: list[str] | None = None
+    ) -> ExtractedSection:
+        """Read the saved posts page, stopping at already-processed posts."""
+        return await self._feed.extract_saved_posts(num_posts, stop_fingerprints)
+
+    async def get_posts_engagement(
+        self,
+        username: str,
+        num_posts: int = 3,
+        since: date | None = None,
+        until: date | None = None,
+        post_url: str | None = None,
+    ) -> ExtractedSection:
+        """Read reactors, commenters and reposters of a profile's posts."""
+        return await self._engagement.get_posts_engagement(
+            username, num_posts, since, until, post_url
+        )
 
     async def extract_page(
         self,

@@ -73,6 +73,8 @@ Use code <strong>FOUNDING20</strong> for 20% off your first year <a href="https:
 | `get_job_details` | Read the details of a LinkedIn job posting by its job ID. |
 | `get_job_apply_url` | Read how a posting takes applications and the employer's link. |
 | `get_feed` | Read recent home-feed posts, with links in `references`. |
+| `get_saved_posts` | Read your saved (bookmarked) posts, optionally stopping at already-processed ones. |
+| `get_posts_engagement` | List who reacted to, commented on and reposted a profile's posts, selected by permalink, latest N or date range (name, profile URL, headline or comment text). |
 | `search_posts` | Search posts by keyword with optional recency filters; `references` contains unordered candidate post links. |
 | `close_session` | Close the active browser session and release its resources. |
 

@@ -102,3 +102,70 @@ def register_feed_tools(
                 raise_tool_error(relogin_exc, "get_feed")
         except Exception as e:
             raise_tool_error(e, "get_feed")
+
+    @mcp.tool(
+        timeout=tool_timeout,
+        title="Get Saved Posts",
+        annotations={"readOnlyHint": True, "openWorldHint": True},
+        tags={"feed"},
+    )
+    async def get_saved_posts(
+        ctx: Context,
+        num_posts: Annotated[int, Field(ge=1, le=50)] = 10,
+        stop_fingerprints: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Get posts saved (bookmarked) by the authenticated user.
+
+        Args:
+            ctx: FastMCP context for progress reporting
+            num_posts: Number of saved posts to fetch (1-50, default 10).
+            stop_fingerprints: Substrings of already-processed posts (e.g. their
+                first ~80 characters). Scrolling stops as soon as any of them
+                appears in the page.
+
+        Returns:
+            Dict with url, sections (saved_posts -> raw text), and optional
+            references["saved_posts"] and section_errors.
+        """
+        try:
+            extractor = await get_ready_extractor(ctx, tool_name="get_saved_posts")
+            logger.info("Reading saved posts (num_posts=%d)", num_posts)
+
+            await ctx.report_progress(
+                progress=0, total=100, message="Reading saved posts"
+            )
+
+            extracted = await extractor.extract_saved_posts(
+                num_posts=num_posts, stop_fingerprints=stop_fingerprints
+            )
+
+            url = "https://www.linkedin.com/my-items/saved-posts/"
+            sections: dict[str, str] = {}
+            references: dict[str, list[Reference]] = {}
+            section_errors: dict[str, dict[str, Any]] = {}
+            if extracted.text and extracted.text != RATE_LIMITED_SECTION_TEXT:
+                sections["saved_posts"] = extracted.text
+                if extracted.references:
+                    references["saved_posts"] = extracted.references
+            elif extracted.text == RATE_LIMITED_SECTION_TEXT:
+                section_errors["saved_posts"] = rate_limited_section_error()
+            elif extracted.error:
+                section_errors["saved_posts"] = extracted.error
+
+            await ctx.report_progress(progress=100, total=100, message="Complete")
+
+            result: dict[str, Any] = {"url": url, "sections": sections}
+            if references:
+                result["references"] = references
+            if section_errors:
+                result["section_errors"] = section_errors
+            return result
+
+        except AuthenticationError as e:
+            try:
+                await handle_auth_error(e, ctx)
+            except Exception as relogin_exc:
+                raise_tool_error(relogin_exc, "get_saved_posts")
+        except Exception as e:
+            raise_tool_error(e, "get_saved_posts")

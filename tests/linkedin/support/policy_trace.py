@@ -589,6 +589,8 @@ def semantic_selector_id(selector: str) -> str:
     }
     if selector in selectors:
         return selectors[selector]
+    if selector.startswith("[data-urn^='urn:li:activity:']"):
+        return "activity_card"
     if "dialog" in selector and "textarea" in selector:
         return "dialog_textarea"
     if "dialog" in selector:
@@ -662,6 +664,8 @@ def semantic_program_id(program: str) -> str:
         ("lines.includes(heading)", "job_description_ready"),
         ("premium/", "premium_dialog_text"),
         ('main a[href*="/in/"]', "sidebar_expanded_profiles"),
+        ("window.scrollTo(0, document.body.scrollHeight)", "scroll_window_bottom"),
+        ("document.body.scrollHeight", "body_scroll_height"),
     )
     for marker, operation in checks:
         if marker in compact:

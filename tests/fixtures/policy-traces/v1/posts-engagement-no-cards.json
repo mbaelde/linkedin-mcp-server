@@ -1,0 +1,93 @@
+{
+  "call": {
+    "arguments": {
+      "num_posts": 3,
+      "username": "ada-lovelace"
+    },
+    "method": "get_posts_engagement"
+  },
+  "events": [
+    {
+      "call": "get_posts_engagement",
+      "callback_id": "callback-1",
+      "event": "framenavigated",
+      "kind": "listener.add",
+      "section": "engagement"
+    },
+    {
+      "call": "get_posts_engagement",
+      "extra": {
+        "target_url": "https://www.linkedin.com/in/ada-lovelace/recent-activity/shares/",
+        "wait_until": "domcontentloaded"
+      },
+      "kind": "boundary.trace",
+      "label": "extractor-before-goto",
+      "section": "engagement"
+    },
+    {
+      "call": "get_posts_engagement",
+      "kind": "navigate",
+      "landed_url": "https://www.linkedin.com/in/ada-lovelace/recent-activity/shares/",
+      "requested_url": "https://www.linkedin.com/in/ada-lovelace/recent-activity/shares/",
+      "section": "engagement",
+      "timeout_ms": 30000,
+      "wait_until": "domcontentloaded"
+    },
+    {
+      "call": "get_posts_engagement",
+      "description": "goto https://www.linkedin.com/in/ada-lovelace/recent-activity/shares/",
+      "kind": "boundary.stabilize",
+      "result": null,
+      "section": "engagement"
+    },
+    {
+      "call": "get_posts_engagement",
+      "extra": {
+        "target_url": "https://www.linkedin.com/in/ada-lovelace/recent-activity/shares/",
+        "wait_until": "domcontentloaded"
+      },
+      "kind": "boundary.trace",
+      "label": "extractor-after-goto",
+      "section": "engagement"
+    },
+    {
+      "call": "get_posts_engagement",
+      "kind": "boundary.auth_quick",
+      "result": null,
+      "section": "engagement"
+    },
+    {
+      "call": "get_posts_engagement",
+      "callback_id": "callback-1",
+      "event": "framenavigated",
+      "kind": "listener.remove",
+      "section": "engagement"
+    },
+    {
+      "call": "get_posts_engagement",
+      "kind": "boundary.rate_limit",
+      "section": "engagement"
+    },
+    {
+      "call": "get_posts_engagement",
+      "dismissed": false,
+      "kind": "boundary.modal",
+      "section": "engagement"
+    },
+    {
+      "call": "get_posts_engagement",
+      "kind": "wait_for_selector",
+      "operation": "activity_card",
+      "section": "engagement",
+      "selector": "[data-urn^='urn:li:activity:']:not([data-urn^='urn:li:activity:'] *)",
+      "state": "visible",
+      "timeout_ms": 15000
+    }
+  ],
+  "result": {
+    "references": [],
+    "text": "[Rate limited] LinkedIn blocked this section. Try again later or request fewer sections."
+  },
+  "scenario": "get_posts_engagement__no_cards",
+  "schema_version": 1
+}

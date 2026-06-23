@@ -18,6 +18,7 @@ from linkedin_mcp_server.linkedin.contracts import (
     RATE_LIMITED_SECTION_TEXT,
     ExtractedSection,
 )
+from linkedin_mcp_server.linkedin.link_metadata import build_references
 from linkedin_mcp_server.linkedin.feed_payload import (
     POST_SLUG_URL_RE,
     build_feed_references,
@@ -296,4 +297,85 @@ class FeedReader:
         return ExtractedSection(
             text=cleaned,
             references=build_feed_references(raw_result["references"], captured_urls),
+        )
+
+    async def extract_saved_posts(
+        self,
+        num_posts: int = 10,
+        stop_fingerprints: list[str] | None = None,
+    ) -> ExtractedSection:
+        """Read the saved posts page (/my-items/saved-posts/).
+
+        Scrolling stops as soon as any string in *stop_fingerprints* appears in
+        the page text, so already-processed posts are not loaded again.
+        """
+        url = "https://www.linkedin.com/my-items/saved-posts/"
+        try:
+            return await self._extract_saved_posts_body(
+                url, num_posts, stop_fingerprints or []
+            )
+        except LinkedInOperationError:
+            raise
+        except Exception as e:
+            logger.warning("Failed to extract saved posts: %s", e)
+            return ExtractedSection(
+                text="",
+                references=[],
+                error=build_issue_diagnostics(e, context="extract_saved_posts"),
+            )
+
+    async def _extract_saved_posts_body(
+        self, url: str, num_posts: int, stop_fingerprints: list[str]
+    ) -> ExtractedSection:
+        page = self._session.page
+        await self._navigator._navigate_to_page(url)
+        await self._session.check_rate_limit()
+
+        try:
+            await page.wait_for_selector("main")
+        except PlaywrightTimeoutError:
+            logger.debug("No <main> element found on %s", url)
+
+        await self._session.dismiss_modal()
+
+        try:
+            await page.wait_for_function(
+                """() => {
+                    const main = document.querySelector('main');
+                    if (!main) return false;
+                    return main.innerText.length > 200;
+                }""",
+                timeout=10000,
+            )
+        except PlaywrightTimeoutError:
+            logger.debug("Saved posts content did not appear on %s", url)
+
+        # The page loads about five posts per scroll.
+        for i in range(min(max(1, (num_posts + 4) // 5), 20)):
+            if stop_fingerprints:
+                current_text: str = await page.evaluate(
+                    "() => (document.querySelector('main') || document.body).innerText"
+                )
+                if any(fp in current_text for fp in stop_fingerprints):
+                    logger.debug("Stop fingerprint found after %d scrolls", i)
+                    break
+            previous_height: int = await page.evaluate("document.body.scrollHeight")
+            await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            await self._session.delay(0.5)
+            if await page.evaluate("document.body.scrollHeight") == previous_height:
+                break
+
+        raw_result = await self._content._extract_root_content(["main"])
+        raw = raw_result["text"]
+        if not raw:
+            return ExtractedSection(text="", references=[])
+        truncated = truncate_linkedin_noise(raw)
+        if not truncated and raw.strip():
+            logger.warning(
+                "Page %s returned only LinkedIn chrome (likely rate-limited)", url
+            )
+            return ExtractedSection(text=RATE_LIMITED_SECTION_TEXT, references=[])
+        return ExtractedSection(
+            text=filter_linkedin_noise_lines(truncated),
+            references=build_references(raw_result["references"], "saved_posts"),
         )

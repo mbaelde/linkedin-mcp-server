@@ -553,6 +553,48 @@ async def _feed_response_scenario(*, body_failure: bool) -> dict[str, Any]:
     )
 
 
+async def _saved_posts_scenario() -> dict[str, Any]:
+    name = "extract_saved_posts__bottom_stop"
+    recorder = TraceRecorder(name, _COMMON_ALLOWED)
+    clock = FakeClock(recorder)
+    page = (
+        _page(recorder)
+        .script("evaluate:root_content", _root("Saved posts content"))
+        .script("evaluate:page_text", "Saved posts content")
+        .script("evaluate:body_scroll_height", 1000, 1000)
+        .script("evaluate:scroll_window_bottom", None)
+    )
+    extractor = _extractor(page)
+    arguments = {"num_posts": 10, "stop_fingerprints": ["already processed"]}
+    async with boundaries(recorder, clock):
+        with recorder.context("extract_saved_posts", "saved_posts"):
+            result = await extractor.extract_saved_posts(**arguments)
+    page.assert_clean()
+    return recorder.trace(
+        {"method": "extract_saved_posts", "arguments": arguments},
+        {"references": result.references, "text": result.text},
+    )
+
+
+async def _posts_engagement_no_cards_scenario() -> dict[str, Any]:
+    name = "get_posts_engagement__no_cards"
+    recorder = TraceRecorder(name, _COMMON_ALLOWED)
+    clock = FakeClock(recorder)
+    page = _page(recorder).script(
+        "wait_for_selector:activity_card", PlaywrightTimeoutError("no cards")
+    )
+    extractor = _extractor(page)
+    arguments = {"username": "ada-lovelace", "num_posts": 3}
+    async with boundaries(recorder, clock):
+        with recorder.context("get_posts_engagement", "engagement"):
+            result = await extractor.get_posts_engagement(**arguments)
+    page.assert_clean()
+    return recorder.trace(
+        {"method": "get_posts_engagement", "arguments": arguments},
+        {"references": result.references, "text": result.text},
+    )
+
+
 _MESSAGE_PROFILE_URL = "https://www.linkedin.com/in/ada-lovelace/"
 _MESSAGE_COMPOSE_URL = (
     "https://www.linkedin.com/messaging/compose/"
@@ -1096,6 +1138,8 @@ TOOL_FACADE_METHODS = {
     "connect_with_person",
     "extract_feed",
     "extract_page",
+    "extract_saved_posts",
+    "get_posts_engagement",
     "get_company_employees",
     "get_conversation",
     "get_inbox",
@@ -1143,6 +1187,8 @@ async def build_policy_traces() -> dict[str, dict[str, Any]]:
         "job-search-metadata-upgrade.json": await _job_search_upgrade_scenario(),
         "saved-jobs.json": await _saved_jobs_scenario(),
         "feed-stale.json": await _feed_stale_scenario(),
+        "saved-posts.json": await _saved_posts_scenario(),
+        "posts-engagement-no-cards.json": await _posts_engagement_no_cards_scenario(),
         "feed-response-success.json": await _feed_response_scenario(body_failure=False),
         "feed-response-failure.json": await _feed_response_scenario(body_failure=True),
         "message-target-unavailable.json": await _message_target_scenario(

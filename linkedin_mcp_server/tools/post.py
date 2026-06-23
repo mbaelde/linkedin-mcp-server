@@ -9,6 +9,7 @@ raw innerText for the LLM to parse, plus post-permalink references.
 """
 
 import logging
+from datetime import date
 from typing import Annotated, Any
 
 from fastmcp import Context, FastMCP
@@ -19,7 +20,11 @@ from linkedin_mcp_server.config.schema import DEFAULT_TOOL_TIMEOUT_SECONDS
 from linkedin_mcp_server.core.exceptions import AuthenticationError
 from linkedin_mcp_server.dependencies import get_ready_extractor, handle_auth_error
 from linkedin_mcp_server.error_handler import raise_tool_error
-from linkedin_mcp_server.linkedin.contracts import FilterValidationError
+from linkedin_mcp_server.linkedin.contracts import (
+    RATE_LIMITED_SECTION_TEXT,
+    FilterValidationError,
+    rate_limited_section_error,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -113,3 +118,93 @@ def register_post_tools(
                 raise_tool_error(relogin_exc, "search_posts")
         except Exception as e:
             raise_tool_error(e, "search_posts")  # NoReturn
+
+    @mcp.tool(
+        timeout=tool_timeout,
+        title="Get Posts Engagement",
+        annotations={"readOnlyHint": True, "openWorldHint": True},
+        tags={"post", "scraping"},
+    )
+    async def get_posts_engagement(
+        linkedin_username: str,
+        ctx: Context,
+        num_posts: Annotated[int | None, Field(ge=1, le=20)] = None,
+        since: date | None = None,
+        until: date | None = None,
+        post_url: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        List who reacted to, commented on and reposted a person's posts.
+
+        Reads the person's posts activity page and, for each selected post,
+        opens the reactions and reposts lists and expands the comments.
+        Select either the latest num_posts posts, the posts published between
+        since and until, or the single post at post_url.
+        Only the counters are clicked, never the like/comment/repost actions.
+        Each post costs several page interactions, so keep num_posts small.
+
+        Args:
+            linkedin_username: Profile slug (e.g. "albanpeltier")
+            ctx: FastMCP context for progress reporting
+            num_posts: Maximum number of posts to read (1-20). Defaults to 3,
+                or to 20 when since/until is given.
+            since: First publication day to include (YYYY-MM-DD, UTC)
+            until: Last publication day to include (YYYY-MM-DD, UTC)
+            post_url: Permalink of one post by this person
+                (https://www.linkedin.com/feed/update/urn:li:activity:.../ or
+                a /posts/...-activity-<id>-... URL); overrides the other filters
+
+        Returns:
+            Dict with url, sections (engagement -> text) and optional
+            section_errors. The text has one "=== POST <permalink> ===" block
+            per post ("posted: <UTC time>", start of the post text, then
+            REACTIONS, COMMENTS and REPOSTS lists). Each list line is "name | profile url | detail";
+            reactor detail is the headline, comment detail is
+            "comment:"/"reply:" followed by the author line and text. Reaction
+            types are not reported, and collapsed reply threads stay collapsed.
+        """
+        if num_posts is None:
+            num_posts = 20 if since or until else 3
+        try:
+            extractor = await get_ready_extractor(ctx, tool_name="get_posts_engagement")
+            logger.info(
+                "Reading posts engagement: username=%s, num_posts=%d",
+                linkedin_username,
+                num_posts,
+            )
+            await ctx.report_progress(
+                progress=0, total=100, message="Reading posts engagement"
+            )
+
+            extracted = await extractor.get_posts_engagement(
+                linkedin_username,
+                num_posts=num_posts,
+                since=since,
+                until=until,
+                post_url=post_url,
+            )
+
+            url = f"https://www.linkedin.com/in/{linkedin_username}/recent-activity/shares/"
+            sections: dict[str, str] = {}
+            section_errors: dict[str, dict[str, Any]] = {}
+            if extracted.text and extracted.text != RATE_LIMITED_SECTION_TEXT:
+                sections["engagement"] = extracted.text
+            elif extracted.text == RATE_LIMITED_SECTION_TEXT:
+                section_errors["engagement"] = rate_limited_section_error()
+            elif extracted.error:
+                section_errors["engagement"] = extracted.error
+
+            await ctx.report_progress(progress=100, total=100, message="Complete")
+
+            result: dict[str, Any] = {"url": url, "sections": sections}
+            if section_errors:
+                result["section_errors"] = section_errors
+            return result
+
+        except AuthenticationError as e:
+            try:
+                await handle_auth_error(e, ctx)
+            except Exception as relogin_exc:
+                raise_tool_error(relogin_exc, "get_posts_engagement")
+        except Exception as e:
+            raise_tool_error(e, "get_posts_engagement")
