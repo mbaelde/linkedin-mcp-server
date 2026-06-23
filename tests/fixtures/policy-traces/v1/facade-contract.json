@@ -28,6 +28,10 @@
         "coroutine": true,
         "signature": "(self, url: 'str', section_name: 'str', max_scrolls: 'int | None' = None) -> 'ExtractedSection'"
       },
+      "extract_saved_posts": {
+        "coroutine": true,
+        "signature": "(self, num_posts: 'int' = 10, stop_fingerprints: 'list[str] | None' = None) -> 'ExtractedSection'"
+      },
       "get_company_employees": {
         "coroutine": true,
         "signature": "(self, company_name: 'str', keywords: 'str | None' = None) -> 'dict[str, Any]'"
@@ -51,6 +55,10 @@
       "get_page_text": {
         "coroutine": true,
         "signature": "(self) -> 'str'"
+      },
+      "get_posts_engagement": {
+        "coroutine": true,
+        "signature": "(self, username: 'str', num_posts: 'int' = 3, since: 'date | None' = None, until: 'date | None' = None, post_url: 'str | None' = None) -> 'ExtractedSection'"
       },
       "get_saved_jobs": {
         "coroutine": true,
@@ -101,11 +109,13 @@
       "connect_with_person",
       "extract_feed",
       "extract_page",
+      "extract_saved_posts",
       "get_company_employees",
       "get_conversation",
       "get_inbox",
       "get_job_apply_url",
       "get_my_profile",
+      "get_posts_engagement",
       "get_saved_jobs",
       "get_sidebar_profiles",
       "read_company",
@@ -457,6 +467,77 @@
           "type": "object"
         }
       },
+      "get_posts_engagement": {
+        "input": {
+          "additionalProperties": false,
+          "properties": {
+            "linkedin_username": {
+              "description": "Profile slug (e.g. \"albanpeltier\")",
+              "type": "string"
+            },
+            "num_posts": {
+              "anyOf": [
+                {
+                  "maximum": 20,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Maximum number of posts to read (1-20). Defaults to 3,\nor to 20 when since/until is given."
+            },
+            "post_url": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Permalink of one post by this person\n(https://www.linkedin.com/feed/update/urn:li:activity:.../ or\na /posts/...-activity-<id>-... URL); overrides the other filters"
+            },
+            "since": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "First publication day to include (YYYY-MM-DD, UTC)"
+            },
+            "until": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Last publication day to include (YYYY-MM-DD, UTC)"
+            }
+          },
+          "required": [
+            "linkedin_username"
+          ],
+          "type": "object"
+        },
+        "output": {
+          "additionalProperties": true,
+          "type": "object"
+        }
+      },
       "get_saved_jobs": {
         "input": {
           "additionalProperties": false,
@@ -478,6 +559,40 @@
                 "archived"
               ],
               "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "output": {
+          "additionalProperties": true,
+          "type": "object"
+        }
+      },
+      "get_saved_posts": {
+        "input": {
+          "additionalProperties": false,
+          "properties": {
+            "num_posts": {
+              "default": 10,
+              "description": "Number of saved posts to fetch (1-50, default 10).",
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "stop_fingerprints": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Substrings of already-processed posts (e.g. their\nfirst ~80 characters). Scrolling stops as soon as any of them\nappears in the page."
             }
           },
           "type": "object"

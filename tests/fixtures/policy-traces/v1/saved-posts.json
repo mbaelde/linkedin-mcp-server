@@ -1,0 +1,151 @@
+{
+  "call": {
+    "arguments": {
+      "num_posts": 10,
+      "stop_fingerprints": [
+        "already processed"
+      ]
+    },
+    "method": "extract_saved_posts"
+  },
+  "events": [
+    {
+      "call": "extract_saved_posts",
+      "callback_id": "callback-1",
+      "event": "framenavigated",
+      "kind": "listener.add",
+      "section": "saved_posts"
+    },
+    {
+      "call": "extract_saved_posts",
+      "extra": {
+        "target_url": "https://www.linkedin.com/my-items/saved-posts/",
+        "wait_until": "domcontentloaded"
+      },
+      "kind": "boundary.trace",
+      "label": "extractor-before-goto",
+      "section": "saved_posts"
+    },
+    {
+      "call": "extract_saved_posts",
+      "kind": "navigate",
+      "landed_url": "https://www.linkedin.com/my-items/saved-posts/",
+      "requested_url": "https://www.linkedin.com/my-items/saved-posts/",
+      "section": "saved_posts",
+      "timeout_ms": 30000,
+      "wait_until": "domcontentloaded"
+    },
+    {
+      "call": "extract_saved_posts",
+      "description": "goto https://www.linkedin.com/my-items/saved-posts/",
+      "kind": "boundary.stabilize",
+      "result": null,
+      "section": "saved_posts"
+    },
+    {
+      "call": "extract_saved_posts",
+      "extra": {
+        "target_url": "https://www.linkedin.com/my-items/saved-posts/",
+        "wait_until": "domcontentloaded"
+      },
+      "kind": "boundary.trace",
+      "label": "extractor-after-goto",
+      "section": "saved_posts"
+    },
+    {
+      "call": "extract_saved_posts",
+      "kind": "boundary.auth_quick",
+      "result": null,
+      "section": "saved_posts"
+    },
+    {
+      "call": "extract_saved_posts",
+      "callback_id": "callback-1",
+      "event": "framenavigated",
+      "kind": "listener.remove",
+      "section": "saved_posts"
+    },
+    {
+      "call": "extract_saved_posts",
+      "kind": "boundary.rate_limit",
+      "section": "saved_posts"
+    },
+    {
+      "call": "extract_saved_posts",
+      "kind": "wait_for_selector",
+      "operation": "main",
+      "section": "saved_posts",
+      "selector": "main",
+      "state": "visible",
+      "timeout_ms": null
+    },
+    {
+      "call": "extract_saved_posts",
+      "dismissed": false,
+      "kind": "boundary.modal",
+      "section": "saved_posts"
+    },
+    {
+      "arg": null,
+      "call": "extract_saved_posts",
+      "kind": "wait_for_function",
+      "operation": "main_text_200",
+      "program_digest": "24943facf9de",
+      "section": "saved_posts",
+      "timeout_ms": 10000
+    },
+    {
+      "call": "extract_saved_posts",
+      "kind": "evaluate",
+      "operation": "page_text",
+      "program_digest": "2d7d56761082",
+      "section": "saved_posts"
+    },
+    {
+      "call": "extract_saved_posts",
+      "kind": "evaluate",
+      "operation": "body_scroll_height",
+      "program_digest": "745e6e31cb7e",
+      "section": "saved_posts"
+    },
+    {
+      "call": "extract_saved_posts",
+      "kind": "evaluate",
+      "operation": "scroll_window_bottom",
+      "program_digest": "7cd6ac0c4aa5",
+      "section": "saved_posts"
+    },
+    {
+      "call": "extract_saved_posts",
+      "kind": "sleep",
+      "reason": "sleep",
+      "seconds": 0.5,
+      "section": "saved_posts"
+    },
+    {
+      "call": "extract_saved_posts",
+      "kind": "evaluate",
+      "operation": "body_scroll_height",
+      "program_digest": "745e6e31cb7e",
+      "section": "saved_posts"
+    },
+    {
+      "arg": {
+        "selectors": [
+          "main"
+        ]
+      },
+      "call": "extract_saved_posts",
+      "kind": "evaluate",
+      "operation": "root_content",
+      "program_digest": "e6b2be4ebddd",
+      "section": "saved_posts"
+    }
+  ],
+  "result": {
+    "references": [],
+    "text": "Saved posts content"
+  },
+  "scenario": "extract_saved_posts__bottom_stop",
+  "schema_version": 1
+}
