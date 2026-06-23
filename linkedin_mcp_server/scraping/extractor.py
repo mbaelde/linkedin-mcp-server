@@ -1186,6 +1186,97 @@ class LinkedInExtractor:
                 error=build_issue_diagnostics(e, context="extract_feed"),
             )
 
+    async def extract_saved_posts(
+        self,
+        num_posts: int = 10,
+        stop_fingerprints: list[str] | None = None,
+    ) -> ExtractedSection:
+        """Scrape the LinkedIn saved posts page (/my-items/saved-posts/).
+
+        Stops scrolling as soon as any string in *stop_fingerprints* appears in
+        the page text, avoiding loading posts that were already processed.
+        """
+        url = "https://www.linkedin.com/my-items/saved-posts/"
+        max_scrolls = min(max(1, (num_posts + 4) // 5), 20)
+        try:
+            return await self._extract_saved_posts_body(
+                url, max_scrolls, stop_fingerprints or []
+            )
+        except LinkedInScraperException:
+            raise
+        except Exception as e:
+            logger.warning("Failed to extract saved posts: %s", e)
+            return ExtractedSection(
+                text="",
+                references=[],
+                error=build_issue_diagnostics(e, context="extract_saved_posts"),
+            )
+
+    async def _extract_saved_posts_body(
+        self,
+        url: str,
+        max_scrolls: int,
+        stop_fingerprints: list[str],
+    ) -> ExtractedSection:
+        """Navigate, scroll with early-stop on known fingerprints, extract."""
+        await self._navigate_to_page(url)
+        await detect_rate_limit(self._page)
+
+        try:
+            await self._page.wait_for_selector("main")
+        except PlaywrightTimeoutError:
+            logger.debug("No <main> element found on %s", url)
+
+        await handle_modal_close(self._page)
+
+        try:
+            await self._page.wait_for_function(
+                """() => {
+                    const main = document.querySelector('main');
+                    if (!main) return false;
+                    return main.innerText.length > 200;
+                }""",
+                timeout=10000,
+            )
+        except PlaywrightTimeoutError:
+            logger.debug("Saved posts content did not appear on %s", url)
+
+        for i in range(max_scrolls):
+            if stop_fingerprints:
+                current_text: str = await self._page.evaluate(
+                    "() => (document.querySelector('main') || document.body).innerText"
+                )
+                if any(fp in current_text for fp in stop_fingerprints):
+                    logger.debug(
+                        "Stop fingerprint found after %d scrolls, halting", i
+                    )
+                    break
+
+            previous_height: int = await self._page.evaluate(
+                "document.body.scrollHeight"
+            )
+            await self._page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            await asyncio.sleep(0.5)
+
+            new_height: int = await self._page.evaluate("document.body.scrollHeight")
+            if new_height == previous_height:
+                logger.debug("Reached bottom of saved posts after %d scrolls", i + 1)
+                break
+
+        raw_result = await self._extract_root_content(["main"])
+        raw = raw_result["text"]
+
+        if not raw:
+            return ExtractedSection(text="", references=[])
+        truncated = _truncate_linkedin_noise(raw)
+        if not truncated and raw.strip():
+            return ExtractedSection(text=_RATE_LIMITED_MSG, references=[])
+        cleaned = _filter_linkedin_noise_lines(truncated)
+        return ExtractedSection(
+            text=cleaned,
+            references=build_references(raw_result["references"], "saved_posts"),
+        )
+
     async def _extract_feed_once(
         self,
         num_posts: int,
