@@ -16,6 +16,7 @@ ReferenceKind = Literal[
     "newsletter",
     "school",
     "conversation",
+    "post_analytics",
     "external",
 ]
 
@@ -131,6 +132,7 @@ _NEWSLETTER_PATH_RE = re.compile(r"^/newsletters/([^/?#]+)")
 _PULSE_PATH_RE = re.compile(r"^/pulse/([^/?#]+)")
 _FEED_PATH_RE = re.compile(r"^/feed/update/([^/?#]+)")
 _MESSAGING_THREAD_PATH_RE = re.compile(r"^/messaging/thread/([^/?#]+)")
+_POST_ANALYTICS_PATH_RE = re.compile(r"^/analytics/post-summary/(urn:li:activity:\d+)/?")
 _MAX_REDIRECT_UNWRAP_DEPTH = 5
 
 # Accept both quoted-string and bare-integer JSON list elements, e.g.
@@ -305,6 +307,9 @@ def classify_link(href: str) -> tuple[ReferenceKind, str] | None:
 
     if match := _MESSAGING_THREAD_PATH_RE.match(path):
         return "conversation", f"/messaging/thread/{match.group(1)}/"
+
+    if match := _POST_ANALYTICS_PATH_RE.match(path):
+        return "post_analytics", f"/analytics/post-summary/{match.group(1)}/"
 
     return None
 

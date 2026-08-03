@@ -3054,7 +3054,6 @@ class TestExtractSavedPosts:
     async def test_scroll_budget_scales_with_num_posts(
         self, mock_page, num_posts, expected_scrolls
     ):
->>>>>>> 584247c (feat(tools): add get_saved_posts for /my-items/saved-posts/)
         extractor = LinkedInExtractor(mock_page)
         with patch.object(
             extractor,
@@ -3322,6 +3321,66 @@ class TestSearchPosts:
             "error_type": "navigation_error",
             "error_message": "timeout",
         }
+
+
+@pytest.mark.asyncio
+class TestPostAnalytics:
+    async def test_extract_post_analytics_builds_url(self, mock_page):
+        extractor = LinkedInExtractor(mock_page)
+        with patch.object(
+            extractor,
+            "extract_page",
+            new_callable=AsyncMock,
+            return_value=extracted("87 impressions"),
+        ) as mock_extract:
+            result = await extractor.extract_post_analytics("1234567890")
+
+        mock_extract.assert_awaited_once_with(
+            "https://www.linkedin.com/analytics/post-summary/urn:li:activity:1234567890/",
+            section_name="post_analytics",
+        )
+        assert (
+            result["url"]
+            == "https://www.linkedin.com/analytics/post-summary/urn:li:activity:1234567890/"
+        )
+        assert result["sections"] == {"post_analytics": "87 impressions"}
+
+    async def test_extract_post_analytics_accepts_full_urn(self, mock_page):
+        extractor = LinkedInExtractor(mock_page)
+        with patch.object(
+            extractor,
+            "extract_page",
+            new_callable=AsyncMock,
+            return_value=extracted("87 impressions"),
+        ):
+            result = await extractor.extract_post_analytics(
+                "urn:li:activity:1234567890"
+            )
+
+        assert (
+            result["url"]
+            == "https://www.linkedin.com/analytics/post-summary/urn:li:activity:1234567890/"
+        )
+
+    async def test_extract_post_analytics_rejects_invalid_urn(self, mock_page):
+        extractor = LinkedInExtractor(mock_page)
+        with pytest.raises(ValueError, match="must be a numeric activity id"):
+            await extractor.extract_post_analytics("not-a-urn")
+
+    async def test_extract_post_analytics_rate_limited_yields_no_section(
+        self, mock_page
+    ):
+        extractor = LinkedInExtractor(mock_page)
+        with patch.object(
+            extractor,
+            "extract_page",
+            new_callable=AsyncMock,
+            return_value=extracted(_RATE_LIMITED_MSG),
+        ):
+            result = await extractor.extract_post_analytics("1234567890")
+
+        assert result["sections"] == {}
+        assert result["section_errors"]["post_analytics"]["error_type"] == "rate_limit"
 
 
 class TestStripLinkedInNoise:

@@ -779,3 +779,36 @@ class TestClassifyLink:
         assert len(references) == 1
         assert references[0]["kind"] == "conversation"
         assert references[0]["url"] == "/messaging/thread/2-xyz/"
+
+    def test_post_analytics_url(self):
+        result = classify_link(
+            "https://www.linkedin.com/analytics/post-summary/urn:li:activity:1234567890/"
+        )
+        assert result == (
+            "post_analytics",
+            "/analytics/post-summary/urn:li:activity:1234567890/",
+        )
+
+    def test_post_analytics_url_with_query(self):
+        result = classify_link(
+            "https://www.linkedin.com/analytics/post-summary/urn:li:activity:1234567890/?trk=xyz"
+        )
+        assert result == (
+            "post_analytics",
+            "/analytics/post-summary/urn:li:activity:1234567890/",
+        )
+
+    def test_posts_references_include_post_analytics_link(self):
+        references = build_references(
+            [
+                {
+                    "href": "https://www.linkedin.com/analytics/post-summary/urn:li:activity:1234567890/",
+                    "text": "Voir les statistiques",
+                },
+            ],
+            "posts",
+        )
+        assert len(references) == 1
+        assert references[0]["kind"] == "post_analytics"
+        assert references[0]["url"] == "/analytics/post-summary/urn:li:activity:1234567890/"
+        assert references[0]["text"] == "Voir les statistiques"

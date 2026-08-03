@@ -56,6 +56,7 @@ This MCP server is **free** and **open source**, supported by [**Unipile**](http
 | `get_feed` | Get recent posts from the authenticated user's home feed | working |
 | `get_saved_posts` | List posts saved (bookmarked) by the authenticated user | working |
 | `search_posts` | Search posts/content globally by keyword (the "Posts" tab) with an optional recency filter (past-24h/past-week/past-month) | working |
+| `get_post_analytics` | Get the analytics summary for one of your own posts: impressions, reach, engagement, and top-1 audience entry per demographic category | working |
 | `close_session` | Close browser session and clean up resources | working |
 
 <br/>

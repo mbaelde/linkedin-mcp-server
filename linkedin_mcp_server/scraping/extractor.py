@@ -1580,6 +1580,22 @@ class LinkedInExtractor:
             except PlaywrightTimeoutError:
                 logger.debug("Activity feed content did not appear on %s", url)
 
+        # Post analytics pages render the stats panel asynchronously after
+        # the header chrome.
+        is_post_analytics = "/analytics/post-summary/" in url
+        if is_post_analytics:
+            try:
+                await self._page.wait_for_function(
+                    """() => {
+                        const main = document.querySelector('main');
+                        if (!main) return false;
+                        return main.innerText.length > 200;
+                    }""",
+                    timeout=10000,
+                )
+            except PlaywrightTimeoutError:
+                logger.debug("Post analytics content did not appear on %s", url)
+
         # Search results pages load a placeholder first then fill in results
         # via JavaScript. Wait for actual content before extracting.
         is_search = "/search/results/" in url
@@ -3853,6 +3869,54 @@ class LinkedInExtractor:
             section_errors["search_results"] = extracted.error
 
         result: dict[str, Any] = {"url": url, "sections": sections}
+        if references:
+            result["references"] = references
+        if section_errors:
+            result["section_errors"] = section_errors
+        return result
+
+    async def extract_post_analytics(self, activity_urn: str) -> dict[str, Any]:
+        """Extract the analytics summary page for one of your own posts.
+
+        Args:
+            activity_urn: The post's activity id, e.g. ``"urn:li:activity:1234567890"``
+                or just the numeric id ``"1234567890"``. Found in a post's
+                "Voir les statistiques" / "View analytics" link, exposed under
+                ``references`` with kind ``"post_analytics"``.
+
+        Returns:
+            {url, sections: {post_analytics: text}}
+        """
+        if not re.fullmatch(r"(?:urn:li:activity:)?\d+", activity_urn):
+            raise FilterValidationError(
+                f"activity_urn must be a numeric activity id, optionally prefixed "
+                f'with "urn:li:activity:"; got {activity_urn!r}.'
+            )
+        if not activity_urn.startswith("urn:li:activity:"):
+            activity_urn = f"urn:li:activity:{activity_urn}"
+
+        url = f"https://www.linkedin.com/analytics/post-summary/{activity_urn}/"
+        extracted = await self.extract_page(url, section_name="post_analytics")
+
+        sections: dict[str, str] = {}
+        references: dict[str, list[Reference]] = {}
+        section_errors: dict[str, dict[str, Any]] = {}
+        if extracted.text and extracted.text != _RATE_LIMITED_MSG:
+            sections["post_analytics"] = extracted.text
+            if extracted.references:
+                references["post_analytics"] = extracted.references
+        elif extracted.text == _RATE_LIMITED_MSG:
+            section_errors["post_analytics"] = {
+                "error_type": "rate_limit",
+                "error_message": extracted.text,
+            }
+        elif extracted.error:
+            section_errors["post_analytics"] = extracted.error
+
+        result: dict[str, Any] = {
+            "url": url,
+            "sections": sections,
+        }
         if references:
             result["references"] = references
         if section_errors:

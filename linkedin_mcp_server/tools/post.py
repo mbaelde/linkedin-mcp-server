@@ -1,11 +1,15 @@
 """
-LinkedIn post/content search tool.
+LinkedIn post tools: content search and post analytics.
 
-Performs LinkedIn's global content search (the "Posts" results tab) using
-innerText extraction, so informal "we're hiring" / "Buscamos ..." posts can
-be found before a formal job listing is published. Mirrors search_people:
-build a /search/results/content/ URL, scroll to load results, and return the
-raw innerText for the LLM to parse, plus post-permalink references.
+search_posts performs LinkedIn's global content search (the "Posts" results
+tab) using innerText extraction, so informal "we're hiring" / "Buscamos ..."
+posts can be found before a formal job listing is published. Mirrors
+search_people: build a /search/results/content/ URL, scroll to load results,
+and return the raw innerText for the LLM to parse, plus post-permalink
+references.
+
+get_post_analytics reads the analytics summary page of one of your own posts,
+also via innerText extraction.
 """
 
 import logging
@@ -27,7 +31,7 @@ logger = logging.getLogger(__name__)
 def register_post_tools(
     mcp: FastMCP, *, tool_timeout: float = DEFAULT_TOOL_TIMEOUT_SECONDS
 ) -> None:
-    """Register post/content-search tools with the MCP server."""
+    """Register all post-related tools with the MCP server."""
 
     @mcp.tool(
         timeout=tool_timeout,
@@ -114,3 +118,60 @@ def register_post_tools(
                 raise_tool_error(relogin_exc, "search_posts")
         except Exception as e:
             raise_tool_error(e, "search_posts")  # NoReturn
+
+    @mcp.tool(
+        timeout=tool_timeout,
+        title="Get Post Analytics",
+        annotations={"readOnlyHint": True, "openWorldHint": True},
+        tags={"post", "analytics", "scraping"},
+        exclude_args=["extractor"],
+    )
+    async def get_post_analytics(
+        activity_urn: str,
+        ctx: Context,
+        extractor: Any | None = None,
+    ) -> dict[str, Any]:
+        """
+        Get the analytics summary for one of your own LinkedIn posts:
+        impressions, in-network/out-of-network reach, engagement breakdown,
+        and the top audience entry per demographic category (location,
+        seniority, company size, industry).
+
+        Only works for your own posts, and only shows the top-1 entry per
+        demographic category -- LinkedIn does not expose a ranked list beyond
+        that for individual posts.
+
+        Args:
+            activity_urn: The post's activity id, e.g. "urn:li:activity:1234567890"
+                or just the numeric id. Found in a post's "Voir les statistiques" /
+                "View analytics" link, exposed under references with kind
+                "post_analytics" (e.g. in get_my_profile(sections="posts")).
+            ctx: FastMCP context for progress reporting
+
+        Returns:
+            Dict with url, sections (post_analytics -> raw text), and optional references.
+            The LLM should parse the raw text for the actual numbers.
+        """
+        try:
+            extractor = extractor or await get_ready_extractor(
+                ctx, tool_name="get_post_analytics"
+            )
+            logger.info("Scraping post analytics: %s", activity_urn)
+
+            await ctx.report_progress(
+                progress=0, total=100, message="Loading post analytics"
+            )
+
+            result = await extractor.extract_post_analytics(activity_urn)
+
+            await ctx.report_progress(progress=100, total=100, message="Complete")
+
+            return result
+
+        except AuthenticationError as e:
+            try:
+                await handle_auth_error(e, ctx)
+            except Exception as relogin_exc:
+                raise_tool_error(relogin_exc, "get_post_analytics")
+        except Exception as e:
+            raise_tool_error(e, "get_post_analytics")  # NoReturn

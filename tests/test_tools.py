@@ -38,6 +38,7 @@ def _make_mock_extractor(scrape_result: dict) -> MagicMock:
     mock.search_companies = AsyncMock(return_value=scrape_result)
     mock.search_posts = AsyncMock(return_value=scrape_result)
     mock.get_company_employees = AsyncMock(return_value=scrape_result)
+    mock.extract_post_analytics = AsyncMock(return_value=scrape_result)
     mock.extract_page = AsyncMock(
         return_value=ExtractedSection(text="some text", references=[])
     )
@@ -1061,6 +1062,46 @@ class TestGetCompanyEmployeesTool:
         tool_fn = await get_tool_fn(mcp, "get_company_employees")
         with pytest.raises(ToolError, match="Session expired"):
             await tool_fn("anthropic", mock_context, extractor=mock_extractor)
+
+
+class TestPostTools:
+    async def test_get_post_analytics_success(self, mock_context):
+        expected = {
+            "url": "https://www.linkedin.com/analytics/post-summary/urn:li:activity:1234567890/",
+            "sections": {"post_analytics": "87 impressions"},
+        }
+        mock_extractor = _make_mock_extractor(expected)
+
+        from linkedin_mcp_server.tools.post import register_post_tools
+
+        mcp = FastMCP("test")
+        register_post_tools(mcp)
+
+        tool_fn = await get_tool_fn(mcp, "get_post_analytics")
+        result = await tool_fn(
+            "1234567890", mock_context, extractor=mock_extractor
+        )
+        assert "post_analytics" in result["sections"]
+        mock_extractor.extract_post_analytics.assert_awaited_once_with("1234567890")
+
+    async def test_get_post_analytics_error(self, mock_context):
+        from fastmcp.exceptions import ToolError
+
+        from linkedin_mcp_server.exceptions import SessionExpiredError
+
+        mock_extractor = MagicMock()
+        mock_extractor.extract_post_analytics = AsyncMock(
+            side_effect=SessionExpiredError()
+        )
+
+        from linkedin_mcp_server.tools.post import register_post_tools
+
+        mcp = FastMCP("test")
+        register_post_tools(mcp)
+
+        tool_fn = await get_tool_fn(mcp, "get_post_analytics")
+        with pytest.raises(ToolError, match="Session expired"):
+            await tool_fn("1234567890", mock_context, extractor=mock_extractor)
 
 
 class TestFeedTools:
