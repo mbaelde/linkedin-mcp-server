@@ -1,6 +1,7 @@
 """Per-post engagement (reactors, commenters, reposters) from a profile's activity page.
 
-LinkedIn serves ``/in/<user>/recent-activity/shares/`` with the classic (Ember)
+LinkedIn serves ``/in/<user>/recent-activity/shares/`` and
+``/company/<slug>/posts/`` with the classic (Ember)
 feed markup, whose per-post social counters are standalone buttons that open
 read-only lists. The SDUI pages (``/feed/update/...``, ``/recent-activity/all/``)
 only expose the repost count inside the "Repost" action button, so they are not
@@ -132,7 +133,11 @@ class PostEngagementReader:
         ``since``..``until`` days (UTC, inclusive), or the single post at
         ``post_url``.
         """
-        url = f"https://www.linkedin.com/in/{username}/recent-activity/shares/"
+        url = (
+            f"https://www.linkedin.com/{username}/posts/"
+            if username.startswith("company/")
+            else f"https://www.linkedin.com/in/{username}/recent-activity/shares/"
+        )
         try:
             return await self._read(url, num_posts, since, until, post_url)
         except LinkedInOperationError:
@@ -204,8 +209,9 @@ class PostEngagementReader:
         """URNs of the profile's own posts, newest first.
 
         LinkedIn may redirect ``/shares/`` to ``/all/``, which also lists
-        "<name> liked/commented/reposted this" cards; those carry a header and
-        their counters belong to someone else's post, so they are skipped.
+        "<name> liked/commented/reposted this" cards, and a company's
+        ``/posts/`` page lists its reposts; those carry a header and their
+        counters belong to someone else's post, so they are skipped.
         """
         return await cards.evaluate_all(
             f"cs => cs.filter(c => !c.querySelector('{_ACTIVITY_HEADER}'))"

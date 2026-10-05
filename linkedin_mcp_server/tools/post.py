@@ -129,7 +129,8 @@ def register_post_tools(
         Each post costs several page interactions, so keep num_posts small.
 
         Args:
-            linkedin_username: Profile slug (e.g. "albanpeltier")
+            linkedin_username: Profile slug (e.g. "albanpeltier"), or
+                "company/<slug>" for a company page (e.g. "company/antvoice")
             ctx: FastMCP context for progress reporting
             num_posts: Maximum number of posts to read (1-20). Defaults to 3,
                 or to 20 when since/until is given.
@@ -168,7 +169,11 @@ def register_post_tools(
             post_url=post_url,
         )
 
-        url = f"https://www.linkedin.com/in/{linkedin_username}/recent-activity/shares/"
+        url = (
+            f"https://www.linkedin.com/{linkedin_username}/posts/"
+            if linkedin_username.startswith("company/")
+            else f"https://www.linkedin.com/in/{linkedin_username}/recent-activity/shares/"
+        )
         sections: dict[str, str] = {}
         section_errors: dict[str, dict[str, Any]] = {}
         if extracted.text and extracted.text != RATE_LIMITED_SECTION_TEXT:
