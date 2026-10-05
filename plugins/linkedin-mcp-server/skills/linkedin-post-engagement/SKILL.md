@@ -12,9 +12,11 @@ user's language.
 ## 1. Work out the request
 
 - **Whose posts**: a profile slug, the part after `linkedin.com/in/` (for
-  `https://www.linkedin.com/in/albanpeltier/` it is `albanpeltier`). If the
-  user gives only a name and no slug or URL, ask for the profile URL. Do not
-  guess.
+  `https://www.linkedin.com/in/albanpeltier/` it is `albanpeltier`). For a
+  company page pass `company/<slug>` (`https://www.linkedin.com/company/antvoice/`
+  gives `company/antvoice`); its reposts of other people's posts are skipped.
+  Several pages (a person and a company) mean one call per page. If the user
+  gives only a name and no slug or URL, ask for the profile URL. Do not guess.
 - **Which posts**, exactly one of:
   - one post: the user pastes a post link. Pass it as `post_url`
     (`/feed/update/urn:li:activity:...` and `/posts/...-activity-<id>-...`
@@ -67,10 +69,32 @@ For each post, oldest first: date, the first words of the post, its link, then
 the counts (reactions, comments, replies, reposts) and the three lists of
 names. Keep comment text short.
 
-If the user is tracking a contest or wants a summary across posts, add a table
-with one row per person and their reaction, comment and repost counts across
-the posts, sorted by total. Write the post author's own reactions and replies
-as a separate line rather than mixing them in.
+If the user wants a summary across posts, add a table with one row per person
+and their reaction, comment and repost counts across the posts, sorted by
+total. Write the post author's own reactions and replies as a separate line
+rather than mixing them in.
+
+### Engagement contest
+
+When the user tracks a contest (for example a team liking and sharing its
+CEO's and company's posts), score across all the posts of all the pages read:
+
+- per post and per person, count at most one reaction, one comment (several
+  comments or replies on the same post count once) and one repost;
+- points: reaction 1, comment 2, repost 3, so 6 at most per post;
+- participants: the member list the user gives. Without one, propose the
+  people whose headline names the company, ask the user to confirm, and
+  remember that reposters have no headline. Match people by name, since
+  reactor profile URLs are often opaque ids. Leave out company pages;
+- table, sorted by total:
+
+  | Nom | Likes | Commentaires | Reposts | Total Points |
+  |---|---|---|---|---|
+
+  where Likes, Commentaires and Reposts are the number of posts with that
+  action and Total Points = Likes + 2 x Commentaires + 3 x Reposts. Below it,
+  state the number of posts per page, the total and the maximum score
+  (6 x posts).
 
 Offer a CSV (`post_date,post_url,action,name,profile_url,detail`, one row per
 reaction, comment or repost) when the user wants to paste the result in a

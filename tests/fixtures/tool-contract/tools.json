@@ -512,7 +512,7 @@
       "properties": {
         "linkedin_username": {
           "type": "string",
-          "description": "Profile slug (e.g. \"albanpeltier\")"
+          "description": "Profile slug (e.g. \"albanpeltier\"), or\n\"company/<slug>\" for a company page (e.g. \"company/antvoice\")"
         },
         "num_posts": {
           "anyOf": [
