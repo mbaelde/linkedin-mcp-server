@@ -49,6 +49,13 @@ def _make_mock_extractor(result: dict) -> MagicMock:
         return_value=ExtractedSection(text="some text", references=[])
     )
     mock.extract_feed = AsyncMock(return_value=ExtractedSection(text="", references=[]))
+    mock.extract_saved_posts = AsyncMock(
+        return_value=ExtractedSection(text="", references=[])
+    )
+    mock.get_posts_engagement = AsyncMock(
+        return_value=ExtractedSection(text="", references=[])
+    )
+    mock.extract_post_analytics = AsyncMock(return_value=result)
     return mock
 
 
@@ -247,7 +254,10 @@ _A_VALID_CALL = [
         {"linkedin_username": "alice", "message": "Hello", "confirm_send": False},
     ),
     ("feed", "get_feed", {}),
+    ("feed", "get_saved_posts", {}),
     ("post", "search_posts", {"keywords": "python"}),
+    ("post", "get_posts_engagement", {"linkedin_username": "alice"}),
+    ("post", "get_post_analytics", {"activity_urn": "123"}),
 ]
 
 
