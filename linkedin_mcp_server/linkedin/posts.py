@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from linkedin_mcp_server.linkedin.capture import (
@@ -9,7 +10,11 @@ from linkedin_mcp_server.linkedin.capture import (
     CapturePlan,
     SectionCapture,
 )
-from linkedin_mcp_server.linkedin.contracts import RATE_LIMITED_SECTION_TEXT
+from linkedin_mcp_server.linkedin.contracts import (
+    RATE_LIMITED_SECTION_TEXT,
+    FilterValidationError,
+    rate_limited_section_error,
+)
 from linkedin_mcp_server.linkedin.link_metadata import Reference
 from linkedin_mcp_server.linkedin.search_urls import build_content_search_url
 
@@ -93,6 +98,53 @@ class PostSearch:
             }
         elif extracted.error:
             section_errors["search_results"] = extracted.error
+
+        result: dict[str, Any] = {"url": url, "sections": sections}
+        if references:
+            result["references"] = references
+        if section_errors:
+            result["section_errors"] = section_errors
+        return result
+
+    async def extract_post_analytics(self, activity_urn: str) -> dict[str, Any]:
+        """Extract the analytics summary page of one of your own posts.
+
+        Args:
+            activity_urn: ``"urn:li:activity:<id>"`` or the bare numeric id,
+                as exposed by references of kind ``"post_analytics"``.
+
+        Returns:
+            {url, sections: {post_analytics: text}} plus optional
+            ``references`` and ``section_errors``.
+        """
+        if not re.fullmatch(r"(?:urn:li:activity:)?\d+", activity_urn):
+            raise FilterValidationError(
+                "activity_urn must be a numeric activity id, optionally prefixed "
+                f'with "urn:li:activity:"; got {activity_urn!r}.'
+            )
+        if not activity_urn.startswith("urn:li:activity:"):
+            activity_urn = f"urn:li:activity:{activity_urn}"
+
+        url = f"https://www.linkedin.com/analytics/post-summary/{activity_urn}/"
+        # The stats panel renders after the header chrome; ACTIVITY waits for
+        # it. The page is short, so a few scrolls are enough.
+        extracted = await self._capture.capture(
+            url,
+            section_name="post_analytics",
+            plan=CapturePlan(CaptureMode.ACTIVITY, max_scrolls=2),
+        )
+
+        sections: dict[str, str] = {}
+        references: dict[str, list[Reference]] = {}
+        section_errors: dict[str, dict[str, Any]] = {}
+        if extracted.text and extracted.text != RATE_LIMITED_SECTION_TEXT:
+            sections["post_analytics"] = extracted.text
+            if extracted.references:
+                references["post_analytics"] = extracted.references
+        elif extracted.text == RATE_LIMITED_SECTION_TEXT:
+            section_errors["post_analytics"] = rate_limited_section_error()
+        elif extracted.error:
+            section_errors["post_analytics"] = extracted.error
 
         result: dict[str, Any] = {"url": url, "sections": sections}
         if references:

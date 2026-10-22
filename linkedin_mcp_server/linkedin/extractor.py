@@ -249,6 +249,10 @@ class LinkedInExtractor:
             max_pages=max_pages,
         )
 
+    async def extract_post_analytics(self, activity_urn: str) -> dict[str, Any]:
+        """Extract the analytics summary page of one of your own posts."""
+        return await self._posts.extract_post_analytics(activity_urn)
+
     async def get_inbox(self, limit: int = 20) -> dict[str, Any]:
         """List recent conversations from the messaging inbox."""
         return await self._conversations.get_inbox(limit)

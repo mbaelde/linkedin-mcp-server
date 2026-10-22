@@ -1,5 +1,5 @@
 """
-LinkedIn post/content search tool.
+LinkedIn post tools: content search, engagement and post analytics.
 
 Performs LinkedIn's global content search (the "Posts" results tab) using
 innerText extraction, so informal "we're hiring" / "Buscamos ..." posts can
@@ -188,4 +188,51 @@ def register_post_tools(
         result: dict[str, Any] = {"url": url, "sections": sections}
         if section_errors:
             result["section_errors"] = section_errors
+        return result
+
+    @mcp.tool(
+        timeout=tool_timeout,
+        title="Get Post Analytics",
+        annotations={"readOnlyHint": True, "openWorldHint": True},
+        tags={"post", "analytics"},
+    )
+    @tool_errors
+    async def get_post_analytics(
+        activity_urn: str,
+        ctx: Context,
+    ) -> dict[str, Any]:
+        """
+        Get the analytics summary for one of your own LinkedIn posts:
+        impressions, in-network/out-of-network reach, engagement breakdown,
+        and the top audience entry per demographic category (location,
+        seniority, company size, industry).
+
+        Only works for your own posts, and only shows the top-1 entry per
+        demographic category: LinkedIn exposes no ranked list beyond that
+        for individual posts.
+
+        Args:
+            activity_urn: The post's activity id, e.g. "urn:li:activity:1234567890"
+                or just the numeric id. Found in a post's "View analytics"
+                link, exposed under references with kind "post_analytics"
+                (e.g. in get_my_profile(sections="posts")).
+            ctx: FastMCP context for progress reporting
+
+        Returns:
+            Dict with url, sections (post_analytics -> raw text), and optional
+            references and section_errors. The LLM should parse the raw text
+            for the actual numbers.
+        """
+        extractor = await get_ready_extractor(ctx, tool_name="get_post_analytics")
+        logger.info("Reading post analytics: %s", activity_urn)
+
+        await ctx.report_progress(progress=0, total=100, message="Loading post analytics")
+
+        try:
+            result = await extractor.extract_post_analytics(activity_urn)
+        except FilterValidationError as e:
+            raise ToolError(str(e)) from e
+
+        await ctx.report_progress(progress=100, total=100, message="Complete")
+
         return result

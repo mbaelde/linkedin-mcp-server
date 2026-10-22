@@ -78,6 +78,7 @@ Use code <strong>FOUNDING20</strong> for 20% off your first year. <a href="https
 | `get_saved_posts` | Read your saved (bookmarked) posts, optionally stopping at already-processed ones. |
 | `get_posts_engagement` | List who reacted to, commented on and reposted a profile's posts, selected by permalink, latest N or date range (name, profile URL, headline or comment text). |
 | `search_posts` | Search posts by keyword, optionally limited to the past day, week, or month. |
+| `get_post_analytics` | Read the analytics summary of one of your own posts: impressions, reach, engagement, and top audience entry per demographic category. |
 | `close_session` | Close the shared browser session without deleting your saved login. |
 
 <br/>

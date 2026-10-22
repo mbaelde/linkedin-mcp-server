@@ -268,3 +268,55 @@ def test_one_requested_page_is_five_scrolls():
     changed scroll budget belongs in a diff that says so.
     """
     assert posts_module._CONTENT_SCROLLS_PER_REQUESTED_PAGE == 5
+
+
+class TestExtractPostAnalytics:
+    @pytest.mark.parametrize("urn", ["123", "urn:li:activity:123"])
+    async def test_both_id_forms_reach_the_same_summary_url(self, mock_page, urn):
+        search = _search(mock_page)
+        with patch.object(
+            search._capture,
+            "capture",
+            new_callable=AsyncMock,
+            return_value=extracted("1,234 impressions"),
+        ) as mock_extract:
+            result = await search.extract_post_analytics(urn)
+
+        url = "https://www.linkedin.com/analytics/post-summary/urn:li:activity:123/"
+        assert result == {"url": url, "sections": {"post_analytics": "1,234 impressions"}}
+        assert mock_extract.await_args_list == [
+            call(
+                url,
+                section_name="post_analytics",
+                plan=CapturePlan(CaptureMode.ACTIVITY, max_scrolls=2),
+            )
+        ]
+
+    async def test_a_non_numeric_id_is_refused_before_navigation(self, mock_page):
+        search = _search(mock_page)
+        with patch.object(search._capture, "capture", new_callable=AsyncMock) as cap:
+            with pytest.raises(posts_module.FilterValidationError):
+                await search.extract_post_analytics("urn:li:share:abc")
+        cap.assert_not_awaited()
+
+    async def test_a_rate_limited_page_becomes_a_section_error(self, mock_page):
+        search = _search(mock_page)
+        with patch.object(
+            search._capture,
+            "capture",
+            new_callable=AsyncMock,
+            return_value=extracted(RATE_LIMITED_SECTION_TEXT),
+        ):
+            result = await search.extract_post_analytics("123")
+
+        assert result["sections"] == {}
+        assert result["section_errors"] == {
+            "post_analytics": rate_limited_section_error()
+        }
+
+    def test_analytics_links_are_classified(self):
+        from linkedin_mcp_server.linkedin.link_metadata import classify_link
+
+        assert classify_link(
+            "https://www.linkedin.com/analytics/post-summary/urn:li:activity:123/?x=1"
+        ) == ("post_analytics", "/analytics/post-summary/urn:li:activity:123/")
