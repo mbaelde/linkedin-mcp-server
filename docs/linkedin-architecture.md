@@ -23,6 +23,7 @@ a page-owning collaborator.
 | `content` | `PageContentReader` | `page-owning` |
 | `contracts` | `ExtractedSection`, `FilterValidationError`, `RATE_LIMITED_SECTION_TEXT`, `SEND_INTERRUPTED_WARNING`, `before_the_reply_deadline()`, `message_action_result()`, `normalize_message_text()`, `rate_limited_section_error()`, `refuse_an_invalid_message()` | `browser-free` |
 | `conversations` | `ConversationReader`, `strip_select_conversation_prefix()` | `page-owning` |
+| `engagement` | `PostEngagementReader`, `post_time_ms()`, `select_posts()` | `page-owning` |
 | `extractor` | `LinkedInExtractor` | `page-owning` |
 | `feed` | `FeedReader` | `page-owning` |
 | `feed_payload` | `POST_SLUG_URL_RE`, `append_permalink_references()`, `build_feed_references()`, `is_feed_payload_response()`, `is_permalink_payload_response()`, `permalink_paths_from_payload()` | `browser-free` |
@@ -76,12 +77,15 @@ a page-owning collaborator.
 - `connect_with_person`
 - `extract_feed`
 - `extract_page`
+- `extract_post_analytics`
+- `extract_saved_posts`
 - `get_company_employees`
 - `get_conversation`
 - `get_inbox`
 - `get_job_apply_url`
 - `get_my_profile`
 - `get_page_text`
+- `get_posts_engagement`
 - `get_saved_jobs`
 - `get_sidebar_profiles`
 - `read_company`
@@ -101,6 +105,7 @@ a page-owning collaborator.
 - `_connection`
 - `_content`
 - `_conversations`
+- `_engagement`
 - `_feed`
 - `_jobs`
 - `_message_sender`
