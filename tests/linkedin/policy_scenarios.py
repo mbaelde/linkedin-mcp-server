@@ -904,6 +904,9 @@ async def _single_capture_facade_scenario(method: str) -> dict[str, Any]:
             elif method == "search_posts":
                 arguments = {"keywords": "mathematics", "max_pages": 2}
                 result = await extractor.search_posts(**arguments)
+            elif method == "extract_post_analytics":
+                arguments = {"activity_urn": "7300000000000000000"}
+                result = await extractor.extract_post_analytics(**arguments)
             else:
                 raise AssertionError(method)
     page.assert_clean()
@@ -1139,6 +1142,7 @@ TOOL_FACADE_METHODS = {
     "connect_with_person",
     "extract_feed",
     "extract_page",
+    "extract_post_analytics",
     "extract_saved_posts",
     "get_posts_engagement",
     "get_company_employees",
@@ -1236,6 +1240,9 @@ async def build_policy_traces() -> dict[str, dict[str, Any]]:
             "search_companies"
         ),
         "search-posts.json": await _single_capture_facade_scenario("search_posts"),
+        "post-analytics.json": await _single_capture_facade_scenario(
+            "extract_post_analytics"
+        ),
         "inbox.json": await _conversation_scenario("get_inbox"),
         "conversation.json": await _conversation_scenario("get_conversation"),
         "search-conversations.json": await _conversation_scenario(

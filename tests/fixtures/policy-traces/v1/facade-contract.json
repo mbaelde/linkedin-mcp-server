@@ -28,6 +28,10 @@
         "coroutine": true,
         "signature": "(self, url: 'str', section_name: 'str', max_scrolls: 'int | None' = None) -> 'ExtractedSection'"
       },
+      "extract_post_analytics": {
+        "coroutine": true,
+        "signature": "(self, activity_urn: 'str') -> 'dict[str, Any]'"
+      },
       "extract_saved_posts": {
         "coroutine": true,
         "signature": "(self, num_posts: 'int' = 10, stop_fingerprints: 'list[str] | None' = None) -> 'ExtractedSection'"
@@ -109,6 +113,7 @@
       "connect_with_person",
       "extract_feed",
       "extract_page",
+      "extract_post_analytics",
       "extract_saved_posts",
       "get_company_employees",
       "get_conversation",
@@ -459,6 +464,25 @@
           },
           "required": [
             "linkedin_username"
+          ],
+          "type": "object"
+        },
+        "output": {
+          "additionalProperties": true,
+          "type": "object"
+        }
+      },
+      "get_post_analytics": {
+        "input": {
+          "additionalProperties": false,
+          "properties": {
+            "activity_urn": {
+              "description": "The post's activity id, e.g. \"urn:li:activity:1234567890\"\nor just the numeric id. Found in a post's \"View analytics\"\nlink, exposed under references with kind \"post_analytics\"\n(e.g. in get_my_profile(sections=\"posts\")).",
+              "type": "string"
+            }
+          },
+          "required": [
+            "activity_urn"
           ],
           "type": "object"
         },

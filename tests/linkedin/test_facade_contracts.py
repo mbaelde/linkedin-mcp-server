@@ -53,6 +53,7 @@ TOOL_DELEGATES = {
     "get_feed": "extract_feed",
     "get_saved_posts": "extract_saved_posts",
     "get_posts_engagement": "get_posts_engagement",
+    "get_post_analytics": "extract_post_analytics",
     "get_inbox": "get_inbox",
     "get_job_apply_url": "get_job_apply_url",
     "get_job_details": "read_job",
